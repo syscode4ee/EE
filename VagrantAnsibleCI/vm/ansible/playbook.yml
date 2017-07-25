@@ -1,0 +1,26 @@
+
+# this playbook is meant to be run inside the vm by the vagrant provisioner
+# just after ansible-galaxy has been also run by vagrant
+- name: Install a CI server with ansible
+  hosts: all
+  become: True
+  connection: local
+
+  roles:
+  - geerlingguy.jenkins
+
+  pre_tasks:
+  - debug:
+      var: hostvars
+
+  post_tasks:
+  - name: "wait for Jenkins to come up"
+    uri:
+      url: "http://{{ ip_address }}:{{ jenkins_port}}/"
+      method: GET
+      status_code: 200
+    ignore_errors: True
+    register: result
+    until: result.status == 200
+    retries: 20
+    delay: 10

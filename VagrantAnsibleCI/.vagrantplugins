@@ -1,0 +1,16 @@
+required_plugins = {
+  'vagrant-hostmanager' => '1.8.7',
+  'vagrant-triggers'    => '0.5.3'
+}
+
+needs_restart = false
+required_plugins.each do |name, version|
+  unless Vagrant.has_plugin? name, version
+    system "vagrant plugin install #{name} --plugin-version=\"#{version}\""
+    needs_restart = true
+  end
+end
+
+if needs_restart
+  exec "vagrant #{ARGV.join' '}"
+end

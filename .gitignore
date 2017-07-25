@@ -1,0 +1,5 @@
+.vagrant
+*.pyc
+.DS_Store
+*_cache.p
+VagrantAnsibleCI/vm/ansible/roles/

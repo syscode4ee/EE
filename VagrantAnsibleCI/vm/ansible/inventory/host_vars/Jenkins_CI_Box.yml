@@ -1,0 +1,23 @@
+---
+# main settings here, easier to read.
+box_name: Jenkins_CI_Box
+# minimal image please, keep things simple.
+box_image: minimal/xenial64
+ip_address: 172.26.55.100
+jenkins_port: 8080
+ram: 1024
+cpu: 2
+# any secret should REALLY be vaulted.
+jenkins_admin_password: equalexperts
+# blueocean 1.0.1 asks for >2.7.1
+jenkins_version: "2.71"
+jenkins_plugins:
+  - blueocean
+# jenkins update center is VERY fragile.
+jenkins_plugin_timeout: 90
+jenkins_plugin_updates_expiration: 0
+
+# change the following to debug the playbook
+ansible_verbose: true
+
+...

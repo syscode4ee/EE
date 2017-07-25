@@ -1,0 +1,87 @@
+# sample Vagrant file with some features added.
+
+# this vagrantfile has been enhanced to be using a external yaml file for
+# configuration, with the idea to maintain a single source of truth setup
+# where the ansible inventory describe the infrastructure as code.
+
+# we use a couple of external vagrant plugins to ease the user experience.
+# for example, we use triggers to open the jenkins url once installed.
+
+# ansible setup
+# I dont think it's useful to anyone to reinvent the wheel, hence i use the
+# most commonly used module in galaxy, which is not perfect but does the job.
+# jenkins is not the easiest software to configure in the world, and not the
+# easiest CI solution to configure for sure.
+
+# improvements to this setup
+# this whole setup would make a lot more sense if wrapped around packer and
+# used as a packed vagrant box instead: quicker to be used by the dev, but needs
+# rebake anytime any version is lifted.
+
+#-
+Vagrant.require_version ">= 1.9.0"
+
+# define host settings in a single YAML file.
+# we use ansible inventories as it gives us a single consistent IaC view.
+# it can be used by ansible alone if we want.
+# also can be extended to be a full ansible inventory.
+vars = YAML.load_file(
+  File.join(File.dirname(__FILE__),
+      '/vm/ansible/inventory/host_vars/Jenkins_CI_Box.yml'
+    ))
+
+#-
+Vagrant.configure(2) do |config|
+  config.vm.define vars['box_name'] do |config|
+    config.vm.box = vars['box_image']
+
+    # we need to 'expose' the 8080 port to the host
+    config.vm.network "forwarded_port", guest: 8080, host: vars['jenkins_port']
+    # this is just for convenience when opening the jenkins url.
+    config.vm.network :private_network, ip: vars['ip_address']
+    # or we can rely on hostname by using the vagrant-hostmanager plugin
+    # neater, but needs passwordless sudo to be effective.
+    # automatic installation could be achieved by using the .vagrantplugins
+    # file in this very directory.
+    config.hostmanager.enabled = false
+    config.hostmanager.manage_host = true
+    config.hostmanager.manage_guest = true
+
+    # not strictly required, but nice to have to actually
+    # have the vm moving fast enough.
+    config.vm.provider "virtualbox" do |v|
+        v.memory = vars['ram']
+        v.cpus = vars['cpu']
+    end
+
+    # we need to put some files in the sync folder to run ansible locally
+    # (from the vm perspective).
+    # this is a nice approach i usually take as it's similar to what you
+    # have in a cloud provider when a unattended install is needed.
+    config.vm.synced_folder "vm", "/sync"
+
+    # actual jenkins install via ansible is done here.
+    config.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "/sync/ansible/playbook.yml"
+      ansible.verbose = "vvvv" if vars['ansible_verbose']
+      ansible.galaxy_role_file = "/sync/ansible/requirements.yml"
+      ansible.install_mode = "pip"
+      # galaxy jenkins modules recommend at least ansible 2.2
+      # jenkins_plugin module has a bug in 2.2
+      ansible.version = "2.3.1"
+      ansible.host_vars = {
+        "Jenkins_CI_Box" => vars
+      }
+      # this is a little workaround for ansible.host_vars doesn't pass
+      # lists correctly to ansible.
+      ansible.extra_vars = {
+        "jenkins_plugins" => vars['jenkins_plugins']
+      }
+    end
+  end
+
+  # open jenkins (blueocean) at the end of the installation.
+  config.trigger.after :up do
+    system("open", "http://#{vars['ip_address']}:#{vars['jenkins_port']}/blue/")
+  end
+end
