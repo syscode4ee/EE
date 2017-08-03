@@ -11,8 +11,10 @@ brew cask install minikube
 
 # you'll also need docker. For osx, easiest option would be Docker for Mac:
 # https://docs.docker.com/engine/installation/mac/
-
 # make sure we use the minikube context
+
+# Start minikube.
+minikube start
 # (in case of other preexisting k8s deployments)
 kubectl config use-context minikube
 # use minikube's docker env (again to avoid clashing with other docker settings)
